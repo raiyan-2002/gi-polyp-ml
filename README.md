@@ -2,6 +2,17 @@
 
 download all the folders from this google drive [link](https://drive.google.com/drive/folders/1Bwbz3EF7SkfZXx2IWcrFn4K9Q35p75H4)
 
+to create the environment, run the following command:
+
+```
+python -m venv venv
+
+source venv/bin/activate  # on Windows, use `venv\Scripts\activate`
+
+pip install -r requirements.txt
+```
+
+
 to test the models, you can run the following code:
 
 ```
