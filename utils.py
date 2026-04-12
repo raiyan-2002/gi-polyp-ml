@@ -5,6 +5,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
 import cv2
+import json
 from pathlib import Path
 
 
@@ -63,7 +64,8 @@ def iou_score(pred, target, smooth=1e-6):
 
 
 def create_data_loaders(image_dir, mask_dir, batch_size=10, img_size=256, 
-                       train_split=0.8, num_workers=0, seed=42):
+                       train_split=0.8, num_workers=0, seed=42, save_split=True, 
+                       split_dir='./checkpoints'):
     """
     Create data loaders for training and validation.
     
@@ -75,9 +77,11 @@ def create_data_loaders(image_dir, mask_dir, batch_size=10, img_size=256,
         train_split: Fraction of data to use for training
         num_workers: Number of workers for data loading
         seed: Random seed for reproducibility
+        save_split: Whether to save train/val split info to JSON
+        split_dir: Directory to save split info
         
     Returns:
-        train_loader, val_loader, dataset info
+        train_loader, val_loader, dataset info, (train_indices, val_indices)
     """
     dataset = PolypDataset(image_dir, mask_dir, img_size=img_size)
     
@@ -107,6 +111,30 @@ def create_data_loaders(image_dir, mask_dir, batch_size=10, img_size=256,
         num_workers=num_workers,
         pin_memory=True
     )
+    
+    # Save split information
+    if save_split:
+        train_indices = train_dataset.indices
+        val_indices = val_dataset.indices
+        
+        train_filenames = [dataset.image_files[i].name for i in train_indices]
+        val_filenames = [dataset.image_files[i].name for i in val_indices]
+        
+        split_info = {
+            'train_split': train_split,
+            'seed': seed,
+            'total_images': len(dataset),
+            'train_count': len(train_filenames),
+            'val_count': len(val_filenames),
+            'train_images': sorted(train_filenames),
+            'val_images': sorted(val_filenames)
+        }
+        
+        Path(split_dir).mkdir(exist_ok=True)
+        split_file = Path(split_dir) / 'train_val_split.json'
+        with open(split_file, 'w') as f:
+            json.dump(split_info, f, indent=2)
+        print(f"Saved train/val split info to {split_file}")
     
     return train_loader, val_loader, len(dataset)
 

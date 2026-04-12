@@ -40,8 +40,8 @@ def main():
     parser = argparse.ArgumentParser(
         description="Randomly sample one data image and compare both trained models"
     )
-    parser.add_argument("--image-dir", default="./data/images", help="Directory with input images")
-    parser.add_argument("--mask-dir", default="./data/masks", help="Directory with GT masks")
+    parser.add_argument("--image-dir", default="./data_separated/images", help="Directory with input images")
+    parser.add_argument("--mask-dir", default="./data_separated/masks", help="Directory with GT masks")
     parser.add_argument("--unet-model-path", default="./checkpoints/unet_best_model.pth", help="Path to U-Net checkpoint")
     parser.add_argument(
         "--resnet-model-path",

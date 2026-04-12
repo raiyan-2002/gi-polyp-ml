@@ -229,7 +229,8 @@ def train_segmentation_model(model_type='unet', image_dir='./data/images',
     # Create data loaders
     print(f"Loading data from {image_dir} and {mask_dir}...")
     train_loader, val_loader, total_samples = create_data_loaders(
-        image_dir, mask_dir, batch_size=batch_size, img_size=img_size
+        image_dir, mask_dir, batch_size=batch_size, img_size=img_size, 
+        split_dir=checkpoint_dir
     )
     print(f"Dataset size: {total_samples}")
     

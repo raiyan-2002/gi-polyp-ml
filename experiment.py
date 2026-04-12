@@ -6,11 +6,36 @@ Run this to train models and evaluate results.
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
+import csv
 from pathlib import Path
 
 from train import train_segmentation_model
 from evaluate import ModelEvaluator
 from inference import SegmentationInference
+
+
+def save_training_metrics_to_csv(train_hist, val_hist, model_name, csv_path):
+    """Save training metrics to CSV file."""
+    num_epochs = len(train_hist['loss'])
+    
+    with open(csv_path, 'w', newline='') as f:
+        writer = csv.writer(f)
+        # Write header
+        writer.writerow(['Epoch', 'Train Loss', 'Train Dice', 'Train IoU', 
+                       'Val Loss', 'Val Dice', 'Val IoU'])
+        # Write data
+        for epoch in range(num_epochs):
+            writer.writerow([
+                epoch + 1,
+                f"{train_hist['loss'][epoch]:.6f}",
+                f"{train_hist['dice'][epoch]:.6f}",
+                f"{train_hist['iou'][epoch]:.6f}",
+                f"{val_hist['loss'][epoch]:.6f}",
+                f"{val_hist['dice'][epoch]:.6f}",
+                f"{val_hist['iou'][epoch]:.6f}",
+            ])
+    
+    print(f"Saved {model_name} training metrics to {csv_path}")
 
 
 def plot_training_history(train_hist, val_hist, save_path=None):
@@ -103,6 +128,10 @@ def main():
     plot_path = Path(config['results_dir']) / 'unet_training_history.png'
     plot_training_history(train_hist_unet, val_hist_unet, save_path=str(plot_path))
     
+    # Save U-Net metrics to CSV
+    csv_path = Path(config['results_dir']) / 'unet_training_metrics.csv'
+    save_training_metrics_to_csv(train_hist_unet, val_hist_unet, 'U-Net', str(csv_path))
+    
     best_unet_path = Path(config['checkpoint_dir']) / 'best_model.pth'
     
     # ===== Train ResNet-UNet =====
@@ -129,6 +158,10 @@ def main():
     # Plot ResNet-UNet results
     plot_path = Path(config['results_dir']) / 'resnet_unet_training_history.png'
     plot_training_history(train_hist_resnet, val_hist_resnet, save_path=str(plot_path))
+    
+    # Save ResNet-UNet metrics to CSV
+    csv_path = Path(config['results_dir']) / 'resnet_unet_training_metrics.csv'
+    save_training_metrics_to_csv(train_hist_resnet, val_hist_resnet, 'ResNet-UNet', str(csv_path))
     
     best_resnet_path = Path(config['checkpoint_dir']) / 'best_model.pth'
     if best_resnet_path.exists():
