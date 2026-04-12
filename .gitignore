@@ -1,2 +1,9 @@
 .specstory/
 data/
+data_separated/
+checkpoints/
+
+**DS_Store**
+__pycache__/
+results/
+.vscode/
