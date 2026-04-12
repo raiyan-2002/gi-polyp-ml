@@ -27,8 +27,11 @@ class SegmentationTrainer:
         self.device = device
         self.model = self.model.to(device)
         
-        # Loss function
-        self.criterion = nn.BCELoss()
+        # Loss function: combine BCE with soft Dice loss to reduce
+        # all-background collapse on imbalanced segmentation masks.
+        self.bce_criterion = nn.BCELoss()
+        self.lambda_bce = 0.5
+        self.lambda_dice = 0.5
         
         # Optimizer
         self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
@@ -49,8 +52,23 @@ class SegmentationTrainer:
             'dice': [],
             'iou': []
         }
+
+    def compute_loss(self, outputs, masks, smooth=1e-6):
+        """Compute combined BCE + soft Dice loss."""
+        bce_loss = self.bce_criterion(outputs, masks)
+
+        outputs_flat = outputs.view(outputs.size(0), -1)
+        masks_flat = masks.view(masks.size(0), -1)
+
+        intersection = (outputs_flat * masks_flat).sum(dim=1)
+        dice = (2 * intersection + smooth) / (
+            outputs_flat.sum(dim=1) + masks_flat.sum(dim=1) + smooth
+        )
+        dice_loss = 1 - dice.mean()
+
+        return self.lambda_bce * bce_loss + self.lambda_dice * dice_loss
     
-    def train_epoch(self, train_loader):
+    def train_epoch(self, train_loader, epoch_idx=0):
         """Train for one epoch."""
         self.model.train()
         
@@ -67,7 +85,14 @@ class SegmentationTrainer:
             # Forward pass
             self.optimizer.zero_grad()
             outputs = self.model(images)
-            loss = self.criterion(outputs, masks)
+            loss = self.compute_loss(outputs, masks)
+
+            if epoch_idx == 0 and num_batches == 0:
+                print(
+                    f"Debug batch stats -> output min/max/mean: "
+                    f"{outputs.min().item():.4f}/{outputs.max().item():.4f}/{outputs.mean().item():.4f}, "
+                    f"mask positive ratio: {masks.mean().item():.4f}"
+                )
             
             # Backward pass and optimization
             loss.backward()
@@ -115,7 +140,7 @@ class SegmentationTrainer:
                 masks = masks.to(self.device)
                 
                 outputs = self.model(images)
-                loss = self.criterion(outputs, masks)
+                loss = self.compute_loss(outputs, masks)
                 
                 # Calculate metrics
                 pred_binary = (outputs > 0.5).float()
@@ -156,16 +181,16 @@ class SegmentationTrainer:
         # Create checkpoint directory
         Path(checkpoint_dir).mkdir(exist_ok=True)
         
-        best_dice = 0
-        best_epoch = 0
-        patience = 20
+        best_dice = -1.0
+        best_epoch = -1
+        patience = 50
         no_improve_count = 0
         
         for epoch in range(num_epochs):
             print(f"\nEpoch {epoch + 1}/{num_epochs}")
             
             # Train
-            train_loss, train_dice, train_iou = self.train_epoch(train_loader)
+            train_loss, train_dice, train_iou = self.train_epoch(train_loader, epoch_idx=epoch)
             print(f"Train - Loss: {train_loss:.4f}, Dice: {train_dice:.4f}, IoU: {train_iou:.4f}")
             
             # Validate
