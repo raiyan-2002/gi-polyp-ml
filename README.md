@@ -1,288 +1,116 @@
-# gi-polyp-ml
+# Medical Image Segmentation with U-Nets
 
-download all the folders from this google drive [link](https://drive.google.com/drive/folders/1Bwbz3EF7SkfZXx2IWcrFn4K9Q35p75H4)
+This repository includes a complete implementation of medical image segmentation for gastrointestinal polyps using deep learning. This project includes U-Net, Attention U-Net, and ResNet-UNet models trained on the Kvasir-SEG dataset.
 
-to create the environment, run the following command:
+**Dataset:** Kvasir-SEG dataset containing 1000 colonoscopy images with corresponding ground-truth segmentation masks. The dataset comes from [here](https://datasets.simula.no/kvasir-seg/)
 
-```
+## Setting Up the Environment
+
+After cloning the repository, create a virtual environment and install dependencies:
+
+### MacOS/Linux
+```bash
 python -m venv venv
-
-source venv/bin/activate  # on Windows, use `venv\Scripts\activate`
-
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-
-to test the models, you can run the following code:
-
+### Windows
+```bash
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
 ```
-python compare_models_random_image.py --output-path ./tests/testx.png
-```
+Then, download the `data`, `data_separated`, and `checkpoints` folders from this Google Drive [link](https://drive.google.com/drive/folders/1Bwbz3EF7SkfZXx2IWcrFn4K9Q35p75H4) and place them in the root of the project directory. 
 
-this will run the code on a random image from the test set and save the output to `./tests/testx.png`. You can change the output path as needed.
+`data` includes 2 subfolders - `images` and `masks` - with 950 colonoscopy images and their corresponding segmentation masks. These images are used for training and validation.
 
-the images and masks are from: [here](https://datasets.simula.no/kvasir-seg/) (kvasir-seg.zip)
+`data_separated` includes 2 subfolders - `images` and `masks` - with 50 training images and masks. These images are used for testing and evaluation of the trained models.
 
-# Polyp Segmentation - Medical Image Segmentation with Deep Learning
-
-A complete implementation of medical image segmentation for gastrointestinal polyps using deep learning. This project includes U-Net and ResNet-UNet models trained on the Kvasir-SEG dataset.
-
-## Project Overview
-
-**Problem:** Medical image segmentation is the task of assigning a class label to every pixel in an image. Accurate pixel-level boundaries for polyps help identify suspicious tissue regions more precisely than image classification, making segmentation useful for computer-aided diagnosis and clinical screening workflows.
-
-**Dataset:** Kvasir-SEG dataset containing 1000 colonoscopy images with corresponding ground-truth segmentation masks (256×256 pixels).
-
-**Metrics:** 
-- **Dice Coefficient**: Measures overlap between predicted and ground-truth masks
-- **Intersection over Union (IoU)**: Measures the intersection divided by the union of predicted and ground-truth regions
+`checkpoints` includes the saved model weights for the best U-Net, Attention U-Net, and ResNet-UNet models after training.
 
 ## Project Structure
+
+After downloading the necessary folders, your project directory should look like this:
 
 ```
 gi-polyp-ml/
 ├── data/
-│   ├── images/          # Input colonoscopy images
-│   └── masks/           # Ground-truth segmentation masks
-├── checkpoints/         # Saved model weights
-├── results/             # Evaluation results and visualizations
-├── models.py            # U-Net and ResNet-UNet architectures
-├── utils.py             # Data loading, preprocessing, metrics
-├── train.py             # Training loop and trainer class
-├── evaluate.py          # Model evaluation on dataset
-├── inference.py         # Prediction and visualization
-├── main.py              # Command-line interface
-├── experiment.py        # Full pipeline with both models
-├── demo.py              # Quick demo script
-├── requirements.txt     # Python dependencies
-└── README.md            # This file
+│   ├── images/               # Input colonoscopy images for training/validation
+│   └── masks/                # Ground-truth segmentation masks for training/validation
+├── data_separated/
+│   ├── images/               # Held-out test images
+│   └── masks/                # Held-out test masks
+├── checkpoints/              # Saved model weights
+├── evaluate.py               # Model evaluation on dataset
+├── evaluate_all_models.py    # Compare all models
+├── experiment.py             # Full pipeline to train/evaluate all models
+├── models.py                 # All model architectures
+├── random_image_sample.py    # Random image sample visual comparison
+├── utils.py                  # Data loading, preprocessing, metrics
+├── train.py                  # Training loop and trainer class
+├── requirements.txt          # Python dependencies
+└── README.md                 # This file
 ```
 
-## Installation
 
-### 1. Clone repository and navigate to project
-```bash
-cd gi-polyp-ml
-```
+## Usage 
 
-### 2. Install dependencies
-```bash
-pip install -r requirements.txt
-```
+After setting up the environment and downloading the dataset, you can train the models, evaluate them, and visualize predictions using the provided scripts. The project supports both command-line interface and Python API for flexibility.
 
-### 3. Prepare dataset
-- Download Kvasir-SEG dataset from [here](https://datasets.simula.no/kvasir-seg/)
-- Extract to `data/` folder so that:
-  ```
-  data/
-  ├── images/    # 1000 colonoscopy images
-  └── masks/     # 1000 corresponding masks
-  ```
+### Training Script
 
-## Usage
-
-### Option 1: Command-line Interface
-
-**Training U-Net model:**
-```bash
-python main.py --mode train --model-type unet --num-epochs 100 --batch-size 10
-```
-
-**Training ResNet-UNet model:**
-```bash
-python main.py --mode train --model-type resnet_unet --num-epochs 100 --batch-size 10
-```
-
-**Evaluate model:**
-```bash
-python main.py --mode evaluate --model-path ./checkpoints/best_model.pth \
-               --model-type unet --output-dir ./results
-```
-
-**Make predictions:**
-```bash
-python main.py --mode predict --model-path ./checkpoints/best_model.pth \
-               --image-path ./data/images/sample.jpg --model-type unet \
-               --output-dir ./results
-```
-
-### Option 2: Python API
-
-**Quick training and evaluation:**
-```python
-from train import train_segmentation_model
-from evaluate import evaluate_model
-
-# Train model
-trainer, train_hist, val_hist = train_segmentation_model(
-    model_type='unet',
-    image_dir='./data/images',
-    mask_dir='./data/masks',
-    batch_size=10,
-    num_epochs=100,
-    img_size=256
-)
-
-# Evaluate
-results = evaluate_model(
-    model_path='./checkpoints/best_model.pth',
-    image_dir='./data/images',
-    mask_dir='./data/masks',
-    model_type='unet',
-    output_dir='./results'
-)
-```
-
-**Inference on single image:**
-```python
-from inference import predict_and_visualize
-
-pred_mask = predict_and_visualize(
-    model_path='./checkpoints/best_model.pth',
-    image_path='./data/images/sample.jpg',
-    model_type='unet',
-    output_path='./results/prediction.png',
-    threshold=0.5
-)
-```
-
-### Option 3: Full Experiment Pipeline
-
-Run entire training and evaluation pipeline for both models:
+To run the entire training pipeline for all models, use:
 ```bash
 python experiment.py
 ```
 
-This script will:
-1. Train U-Net model and save results
-2. Train ResNet-UNet model and save results
-3. Evaluate both models on the full dataset
-4. Generate comparison plots
-5. Save all results to `./results/`
+This will train the U-Net, Attention U-Net, and ResNet-UNet models sequentially with the images in `data/`, saving the best model to `./checkpoints/`. It will also generate training curves, CSV files, and comparison plots in the `./results/` folder.
 
-### Option 4: Quick Demo
+On an Apple Silicon M4 Pro with 24GB RAM, this script took approximately 6 hours to run.
 
+An example of a training curve plot generated by `experiment.py` looks like this:
+
+<img src="./results/resnet_unet_training_history.png" alt="Sample Training Curve" width="650" />
+
+
+The model comparison plot generated by `experiment.py` looks like this:
+
+<img src="./results/model_comparison.png" alt="Sample Comparison Plot" width="650" />
+
+### Inference Scripts
+
+To evaluate the trained models on the held-out test set in `data_separated/`, use:
 ```bash
-python demo.py
+python evaluate_all_models.py
 ```
 
-## Models
+This will compute Dice and IoU scores for each model on the 50 test images and save a CSV file to `./results/` with metrics such as average Dice and IoU over the test set, for each model. 
 
-### 1. U-Net (Baseline)
-- **Architecture**: Standard U-Net with 4 encoding levels
-- **Channels**: 32 → 64 → 128 → 256 → 512 (bottleneck)
-- **Decoder**: Symmetric structure with skip connections
-- **Parameters**: ~7.8M
-- **Advantages**: Lightweight, trains quickly, good baseline
-
-```
-Input (3, 256, 256)
-  ↓
-Encoder (4 levels)
-  ↓
-Bottleneck (512 channels)
-  ↓
-Decoder (4 levels) with skip connections
-  ↓
-Output (1, 256, 256) - Sigmoid activation
+To evaluate on a different dataset, you can optionally specify the image and mask directories:
+```bash
+python evaluate_all_models.py --image-dir ./path/to/test/images --mask-dir ./path/to/test/masks
 ```
 
-### 2. ResNet-UNet
-- **Backbone**: ResNet50 pretrained on ImageNet
-- **Architecture**: U-Net with ResNet50 encoder
-- **Transfer Learning**: Benefits from ImageNet pretraining
-- **Parameters**: ~25.5M
-- **Advantages**: Better performance due to pretrained features, handles single-GPU constraints
 
-## Key Features
+To visualize predictions on a single random image from the test set, use:
+```bash
+python random_image_sample.py
+```
 
-### Data Processing
-- **Image Resizing**: All images and masks resized to 256×256 pixels
-- **Normalization**: Images normalized to [0, 1] range
-- **Mask Binarization**: Masks converted to binary (0/1) labels
-- **Train/Val Split**: 80% training, 20% validation
+This will randomly select one image from the `data_separated/` folder, run inference with all three models, and print the Dice and IoU scores for that image. It will also generate a side-by-side visualization of the input image, predicted masks for each model, and ground-truth mask.
 
-### Training
-- **Batch Size**: 10 (optimized for single GPU)
-- **Loss Function**: Binary Cross-Entropy (BCE)
-- **Optimizer**: Adam with learning rate 1e-3
-- **Scheduler**: ReduceLROnPlateau
-- **Early Stopping**: Patience of 20 epochs
+To save the visualization to a file, you can specify an output path to save the image:
+```bash
+python random_image_sample.py --output-path ./results/sample_prediction.png
+```
 
-### Evaluation
-- **Dice Coefficient**: $\text{Dice} = \frac{2|X \cap Y|}{|X| + |Y|}$
-- **IoU Score**: $\text{IoU} = \frac{|X \cap Y|}{|X \cup Y|}$
-- **Metrics computed** on full validation set with statistics (mean, std, min, max)
+To change the input image and mask directories, you can specify them as well:
+```bash
+python random_image_sample.py --image-dir ./path/to/test/images --mask-dir ./path/to/test/masks
+```
 
-### Inference
-- **Threshold**: 0.5 for binary mask conversion
-- **Output**: Binary segmentation mask matching original image size
-- **Visualization**: Side-by-side comparison of input, soft prediction, and binary mask
+An example output visualization from `random_image_sample.py` looks like this:
 
-## Expected Performance
+<img src="./tests/test1.png" alt="Sample Prediction Visualization" width="650" />
 
-Based on typical Kvasir-SEG results:
-
-| Model | Dice | IoU |
-|-------|------|-----|
-| U-Net | 0.75-0.85 | 0.65-0.78 |
-| ResNet-UNet | 0.82-0.90 | 0.72-0.85 |
-
-Note: Performance varies based on training duration and hyperparameters.
-
-## Training Tips
-
-1. **GPU Requirements**: ~4-8GB VRAM for batch size 10
-2. **Training Time**: 
-   - U-Net: ~2-4 hours per 100 epochs
-   - ResNet-UNet: ~4-6 hours per 100 epochs
-3. **Best Practices**:
-   - Use ResNet-UNet if you have sufficient time/compute
-   - Monitor validation Dice score for early stopping
-   - Adjust learning rate if training becomes unstable
-   - Increase batch size if you have more GPU memory
-
-## Output Files
-
-### Checkpoints
-- `checkpoints/best_model.pth`: Best model weights and training metadata
-
-### Results
-- `results/evaluation_results.png`: Histogram of Dice and IoU scores
-- `results/metrics.txt`: Detailed evaluation metrics
-- `results/unet_training_history.png`: U-Net training curves
-- `results/resnet_unet_training_history.png`: ResNet-UNet training curves
-- `results/model_comparison.png`: Side-by-side model comparison
-- `results/prediction.png`: Prediction visualization
-
-## Troubleshooting
-
-### Out of Memory Error
-- Reduce batch size: `--batch-size 5`
-- Reduce image size: `--img-size 128`
-- Use U-Net instead of ResNet-UNet
-
-### Slow Training
-- Increase batch size if memory allows
-- Use ResNet-UNet (better features, may converge faster)
-- Check GPU utilization with `nvidia-smi`
-
-### Low Performance
-- Train for more epochs (increase `--num-epochs`)
-- Try different learning rates (e.g., 1e-4 or 5e-3)
-- Ensure data is correctly formatted (matching filenames)
-- Check for image quality issues
-
-## References
-
-1. **U-Net**: Ronneberger et al., "U-Net: Convolutional Networks for Biomedical Image Segmentation" (2015)
-2. **Kvasir-SEG Dataset**: Available at https://datasets.simula.no/kvasir-seg/
-3. **segmentation-models-pytorch**: https://github.com/qubvel/segmentation_models.pytorch
-
-## License
-
-This implementation is for educational purposes.
-
-## Questions and Issues
-
-For questions or issues, please refer to the code documentation and comments in each module.
