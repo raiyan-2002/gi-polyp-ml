@@ -6,7 +6,7 @@ This repository includes a complete implementation of medical image segmentation
 
 ## Setting Up the Environment
 
-After cloning the repository, create a virtual environment and install dependencies:
+After cloning/downloading the repository, create a virtual environment and install dependencies:
 
 ### MacOS/Linux
 ```bash
@@ -25,7 +25,7 @@ Then, download the `data`, `data_separated`, and `checkpoints` folders from this
 
 `data` includes 2 subfolders - `images` and `masks` - with 950 colonoscopy images and their corresponding segmentation masks. These images are used for training and validation.
 
-`data_separated` includes 2 subfolders - `images` and `masks` - with 50 training images and masks. These images are used for testing and evaluation of the trained models.
+`data_separated` includes 2 subfolders - `images` and `masks` - with 50 testing images and masks. These images are used for testing and evaluation of the trained models. These images were held out from the training process to provide an unbiased evaluation of model performance.
 
 `checkpoints` includes the saved model weights for the best U-Net, Attention U-Net, and ResNet-UNet models after training.
 
