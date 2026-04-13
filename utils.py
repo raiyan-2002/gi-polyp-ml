@@ -1,6 +1,3 @@
-"""
-Utility functions for the polyp segmentation project.
-"""
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -29,6 +26,8 @@ def dice_coefficient(pred, target, smooth=1e-6):
     pred_flat = pred.flatten()
     target_flat = target.flatten()
     
+    # Compute dice coefficient: 2 * intersection / (sum of sizes)
+    # Add smoothing term in numerator and denominator to avoid division by zero
     intersection = (pred_flat * target_flat).sum()
     dice = (2 * intersection + smooth) / (pred_flat.sum() + target_flat.sum() + smooth)
     
@@ -55,6 +54,8 @@ def iou_score(pred, target, smooth=1e-6):
     pred_flat = pred.flatten()
     target_flat = target.flatten()
     
+    # Compute IoU: intersection / union
+    # Add smoothing term in numerator and denominator to avoid division by zero
     intersection = (pred_flat * target_flat).sum()
     union = pred_flat.sum() + target_flat.sum() - intersection
     
@@ -89,9 +90,11 @@ def create_data_loaders(image_dir, mask_dir, batch_size=10, img_size=256,
     train_size = int(len(dataset) * train_split)
     val_size = len(dataset) - train_size
     
+    # Seed for reproducibility
     torch.manual_seed(seed)
     np.random.seed(seed)
     
+    # Create train and validation splits
     train_dataset, val_dataset = torch.utils.data.random_split(
         dataset, [train_size, val_size]
     )
@@ -112,7 +115,7 @@ def create_data_loaders(image_dir, mask_dir, batch_size=10, img_size=256,
         pin_memory=True
     )
     
-    # Save split information
+    # Save split information into JSON
     if save_split:
         train_indices = train_dataset.indices
         val_indices = val_dataset.indices
@@ -158,9 +161,8 @@ class PolypDataset(Dataset):
         self.img_size = img_size
         self.augment = augment
         
-        # Get all image files
-        self.image_files = sorted([f for f in self.image_dir.glob('*') 
-                                   if f.suffix.lower() in ['.jpg', '.jpeg', '.png', '.bmp']])
+        # Get all JPG image files
+        self.image_files = sorted(self.image_dir.glob('*.jpg'))
         
         if len(self.image_files) == 0:
             raise ValueError(f"No images found in {image_dir}")

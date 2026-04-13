@@ -1,8 +1,4 @@
-"""
-Evaluation script for comprehensive model assessment.
-"""
 import torch
-import cv2
 import numpy as np
 from pathlib import Path
 from tqdm import tqdm
@@ -31,6 +27,19 @@ class ModelEvaluator:
         checkpoint = torch.load(model_path, map_location=device)
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.model.eval()
+
+    def evaluate_single_image(self, image, mask, threshold=0.5):
+        """Evaluate a single image tensor and mask tensor."""
+        with torch.no_grad():
+            output = self.model(image)
+
+        pred_binary = (output > threshold).float()
+        dice = dice_coefficient(pred_binary, mask).item()
+        iou = iou_score(pred_binary, mask).item()
+
+        pred_soft = output.squeeze(0).squeeze(0).cpu().numpy()
+        pred_hard = pred_binary.squeeze(0).squeeze(0).cpu().numpy()
+        return pred_soft, pred_hard, dice, iou
     
     def evaluate_dataset(self, image_dir, mask_dir, threshold=0.5, batch_size=10):
         """
@@ -57,14 +66,8 @@ class ModelEvaluator:
                 image, mask = dataset[idx]
                 image = image.unsqueeze(0).to(self.device)
                 mask = mask.unsqueeze(0).to(self.device)
-                
-                # Forward pass
-                output = self.model(image)
-                pred_binary = (output > threshold).float()
-                
-                # Calculate metrics
-                dice = dice_coefficient(pred_binary, mask).item()
-                iou = iou_score(pred_binary, mask).item()
+
+                _, _, dice, iou = self.evaluate_single_image(image, mask, threshold=threshold)
                 
                 all_dice.append(dice)
                 all_iou.append(iou)

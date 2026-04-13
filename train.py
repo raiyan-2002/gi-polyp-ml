@@ -1,6 +1,3 @@
-"""
-Training script for polyp segmentation models.
-"""
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -58,7 +55,8 @@ class SegmentationTrainer:
 
         outputs_flat = outputs.view(outputs.size(0), -1)
         masks_flat = masks.view(masks.size(0), -1)
-
+    
+        # Compute dice with smoothing to avoid division by zero
         intersection = (outputs_flat * masks_flat).sum(dim=1)
         dice = (2 * intersection + smooth) / (
             outputs_flat.sum(dim=1) + masks_flat.sum(dim=1) + smooth
@@ -85,13 +83,6 @@ class SegmentationTrainer:
             self.optimizer.zero_grad()
             outputs = self.model(images)
             loss = self.compute_loss(outputs, masks)
-
-            if epoch_idx == 0 and num_batches == 0:
-                print(
-                    f"Debug batch stats -> output min/max/mean: "
-                    f"{outputs.min().item():.4f}/{outputs.max().item():.4f}/{outputs.mean().item():.4f}, "
-                    f"mask positive ratio: {masks.mean().item():.4f}"
-                )
             
             # Backward pass and optimization
             loss.backward()
@@ -102,6 +93,7 @@ class SegmentationTrainer:
             dice = dice_coefficient(pred_binary, masks).item()
             iou = iou_score(pred_binary, masks).item()
             
+            # Update totals
             total_loss += loss.item()
             total_dice += dice
             total_iou += iou
@@ -113,6 +105,7 @@ class SegmentationTrainer:
                 'iou': f'{total_iou / num_batches:.4f}'
             })
         
+        # Compute average metrics for the epoch
         avg_loss = total_loss / num_batches
         avg_dice = total_dice / num_batches
         avg_iou = total_iou / num_batches
@@ -146,6 +139,7 @@ class SegmentationTrainer:
                 dice = dice_coefficient(pred_binary, masks).item()
                 iou = iou_score(pred_binary, masks).item()
                 
+                # Update totals
                 total_loss += loss.item()
                 total_dice += dice
                 total_iou += iou
@@ -157,6 +151,7 @@ class SegmentationTrainer:
                     'iou': f'{total_iou / num_batches:.4f}'
                 })
         
+        # Compute average metrics for the epoch
         avg_loss = total_loss / num_batches
         avg_dice = total_dice / num_batches
         avg_iou = total_iou / num_batches

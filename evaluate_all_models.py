@@ -1,11 +1,4 @@
-"""
-Evaluate all trained segmentation models on every image in data_separated
-and save one CSV with per-image metrics plus an average row.
-
-Usage:
-    python evaluate_models_to_csv.py
-"""
-
+import argparse
 import csv
 from pathlib import Path
 
@@ -13,8 +6,8 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from models import get_model
-from utils import PolypDataset, dice_coefficient, iou_score
+from evaluate import ModelEvaluator
+from utils import PolypDataset
 
 
 IMAGE_DIR = "./data_separated/images"
@@ -27,42 +20,40 @@ IMG_SIZE = 256
 THRESHOLD = 0.5
 
 
-def load_checkpoint_model(model_type: str, model_path: str, device: str):
-    model = get_model(
-        model_type=model_type,
-        in_channels=3,
-        out_channels=1,
-        device=device,
-    )
-    checkpoint = torch.load(model_path, map_location=device)
-    model.load_state_dict(checkpoint["model_state_dict"])
-    model.eval()
-    return model
-
-
-def evaluate_one_image(model, image_tensor, mask_tensor, threshold: float):
-    with torch.no_grad():
-        output = model(image_tensor)
-
-    pred_binary = (output > threshold).float()
-    dice = float(dice_coefficient(pred_binary, mask_tensor).item())
-    iou = float(iou_score(pred_binary, mask_tensor).item())
-    return dice, iou
-
-
 def main():
+    parser = argparse.ArgumentParser(
+        description="Evaluate all trained segmentation models and save per-image CSV metrics"
+    )
+    parser.add_argument("--image-dir", default=IMAGE_DIR, help="Directory with input images")
+    parser.add_argument("--mask-dir", default=MASK_DIR, help="Directory with ground-truth masks")
+
+    args = parser.parse_args()
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: {device}")
 
-    dataset = PolypDataset(IMAGE_DIR, MASK_DIR, img_size=IMG_SIZE)
+    dataset = PolypDataset(args.image_dir, args.mask_dir, img_size=IMG_SIZE)
     if len(dataset) == 0:
-        raise ValueError("No images found in data_separated.")
+        raise ValueError(f"No images found in {args.image_dir}.")
 
     print(f"Found {len(dataset)} images.")
 
-    unet_model = load_checkpoint_model("unet", UNET_MODEL_PATH, device)
-    attention_model = load_checkpoint_model("attention_unet", ATTENTION_MODEL_PATH, device)
-    resnet_model = load_checkpoint_model("resnet_unet", RESNET_MODEL_PATH, device)
+    # Create Model Evaluator for each model type
+    unet_evaluator = ModelEvaluator(UNET_MODEL_PATH, model_type="unet", device=device, img_size=IMG_SIZE)
+
+    attention_evaluator = ModelEvaluator(
+        ATTENTION_MODEL_PATH,
+        model_type="attention_unet",
+        device=device,
+        img_size=IMG_SIZE,
+    )
+
+    resnet_evaluator = ModelEvaluator(
+        RESNET_MODEL_PATH,
+        model_type="resnet_unet",
+        device=device,
+        img_size=IMG_SIZE,
+    )
 
     rows = []
     unet_dice_scores = []
@@ -72,6 +63,7 @@ def main():
     resnet_dice_scores = []
     resnet_iou_scores = []
 
+    # Evaluate each image in the dataset with all models and collect metrics
     for idx in tqdm(range(len(dataset)), desc="Evaluating all images"):
         image_tensor, mask_tensor = dataset[idx]
         filename = dataset.image_files[idx].name
@@ -79,14 +71,14 @@ def main():
         image_tensor = image_tensor.unsqueeze(0).to(device)
         mask_tensor = mask_tensor.unsqueeze(0).to(device)
 
-        unet_dice, unet_iou = evaluate_one_image(
-            unet_model, image_tensor, mask_tensor, THRESHOLD
+        _, _, unet_dice, unet_iou = unet_evaluator.evaluate_single_image(
+            image_tensor, mask_tensor, threshold=THRESHOLD
         )
-        attention_dice, attention_iou = evaluate_one_image(
-            attention_model, image_tensor, mask_tensor, THRESHOLD
+        _, _, attention_dice, attention_iou = attention_evaluator.evaluate_single_image(
+            image_tensor, mask_tensor, threshold=THRESHOLD
         )
-        resnet_dice, resnet_iou = evaluate_one_image(
-            resnet_model, image_tensor, mask_tensor, THRESHOLD
+        _, _, resnet_dice, resnet_iou = resnet_evaluator.evaluate_single_image(
+            image_tensor, mask_tensor, threshold=THRESHOLD
         )
 
         rows.append({
@@ -120,6 +112,7 @@ def main():
     output_path = Path(OUTPUT_CSV)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # Write results to CSV
     with open(output_path, "w", newline="") as f:
         writer = csv.DictWriter(
             f,

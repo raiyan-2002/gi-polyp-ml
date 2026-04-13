@@ -1,11 +1,5 @@
-"""
-Jupyter notebook-style script for polyp segmentation training and evaluation.
-Run this to train models and evaluate results.
-"""
-
 import torch
 import matplotlib.pyplot as plt
-import numpy as np
 import csv
 from pathlib import Path
 
@@ -93,6 +87,7 @@ def main():
         'learning_rate': 1e-3,
         'checkpoint_dir': './checkpoints',
         'results_dir': './results',
+        # List of models to train and evaluate
         'models_to_train': [
             {
                 'type': 'unet',
@@ -129,7 +124,7 @@ def main():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"\nUsing device: {device}")
     
-    # ===== Train All Models =====
+    # Train all models
     for model_cfg in config['models_to_train']:
         print(f"\n{'='*60}")
         print(f"Training {model_cfg['name']} Model")
@@ -159,7 +154,7 @@ def main():
             target_path = Path(config['checkpoint_dir']) / model_cfg['ckpt']
             best_model_path.rename(target_path)
     
-    # ===== Evaluate Models =====
+    # Evaluate all models
     print(f"\n{'='*60}")
     print("Evaluating Models")
     print(f"{'='*60}")
@@ -181,7 +176,7 @@ def main():
         evaluator.print_results(results)
         model_results[model_cfg['name']] = results
     
-    # ===== Model Comparison =====
+    # Compare models
     print(f"\n{'='*60}")
     print("Model Comparison")
     print(f"{'='*60}")

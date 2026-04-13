@@ -1,9 +1,6 @@
-"""
-U-Net models for polyp segmentation.
-"""
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import segmentation_models_pytorch as smp
 
 
 class ConvBlock(nn.Module):
@@ -204,21 +201,13 @@ class ResNetUNet(nn.Module):
     def __init__(self, in_channels=3, out_channels=1):
         super(ResNetUNet, self).__init__()
 
-        try:
-            import segmentation_models_pytorch as smp
-
-            self.model = smp.Unet(
-                encoder_name="resnet50",
-                encoder_weights="imagenet",
-                in_channels=in_channels,
-                classes=out_channels,
-                activation="sigmoid"  # For binary segmentation
-            )
-        except ImportError:
-            raise ImportError(
-                "segmentation-models-pytorch is required for ResNetUNet. "
-                "Install it with: pip install segmentation-models-pytorch"
-            )
+        self.model = smp.Unet(
+            encoder_name="resnet50",
+            encoder_weights="imagenet",
+            in_channels=in_channels,
+            classes=out_channels,
+            activation="sigmoid"  # For binary segmentation
+        )
 
     def forward(self, x):
         return self.model(x)
