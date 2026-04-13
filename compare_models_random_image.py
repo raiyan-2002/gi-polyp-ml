@@ -1,5 +1,6 @@
 """
-Randomly sample one image from the dataset and compare U-Net vs ResNet-UNet.
+Randomly sample one image from the dataset and compare U-Net, Attention U-Net,
+and ResNet-UNet.
 """
 
 import argparse
@@ -38,11 +39,16 @@ def evaluate_single_image(model, image_tensor, mask_tensor, threshold):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Randomly sample one data image and compare both trained models"
+        description="Randomly sample one data image and compare all trained models"
     )
     parser.add_argument("--image-dir", default="./data_separated/images", help="Directory with input images")
     parser.add_argument("--mask-dir", default="./data_separated/masks", help="Directory with GT masks")
     parser.add_argument("--unet-model-path", default="./checkpoints/unet_best_model.pth", help="Path to U-Net checkpoint")
+    parser.add_argument(
+        "--attention-model-path",
+        default="./checkpoints/attention_unet_best_model.pth",
+        help="Path to Attention U-Net checkpoint",
+    )
     parser.add_argument(
         "--resnet-model-path",
         default="./checkpoints/resnet_unet_best_model.pth",
@@ -75,10 +81,14 @@ def main():
     mask_tensor = mask_tensor.unsqueeze(0).to(device)
 
     unet_model = load_checkpoint_model("unet", args.unet_model_path, device)
+    attention_model = load_checkpoint_model("attention_unet", args.attention_model_path, device)
     resnet_model = load_checkpoint_model("resnet_unet", args.resnet_model_path, device)
 
     unet_soft, unet_hard, unet_dice, unet_iou = evaluate_single_image(
         unet_model, image_tensor, mask_tensor, args.threshold
+    )
+    attn_soft, attn_hard, attn_dice, attn_iou = evaluate_single_image(
+        attention_model, image_tensor, mask_tensor, args.threshold
     )
     res_soft, res_hard, res_dice, res_iou = evaluate_single_image(
         resnet_model, image_tensor, mask_tensor, args.threshold
@@ -86,6 +96,7 @@ def main():
 
     print("\nPer-image results")
     print(f"U-Net       Dice: {unet_dice:.4f} | IoU: {unet_iou:.4f}")
+    print(f"Attention   Dice: {attn_dice:.4f} | IoU: {attn_iou:.4f}")
     print(f"ResNet-UNet Dice: {res_dice:.4f} | IoU: {res_iou:.4f}")
 
     gt_mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
@@ -100,7 +111,7 @@ def main():
     original_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2RGB)
     original_image = cv2.resize(original_image, (args.img_size, args.img_size), interpolation=cv2.INTER_LINEAR)
 
-    fig, axes = plt.subplots(2, 3, figsize=(13, 8))
+    fig, axes = plt.subplots(2, 4, figsize=(16, 8))
 
     axes[0, 0].imshow(original_image)
     axes[0, 0].set_title("Input Image")
@@ -115,10 +126,15 @@ def main():
         0.0,
         0.75,
         f"U-Net\nDice: {unet_dice:.4f}\nIoU:  {unet_iou:.4f}\n\n"
+        f"Attention U-Net\nDice: {attn_dice:.4f}\nIoU:  {attn_iou:.4f}\n\n"
         f"ResNet-UNet\nDice: {res_dice:.4f}\nIoU:  {res_iou:.4f}",
         fontsize=12,
         va="top",
     )
+
+    axes[0, 3].imshow(attn_soft, cmap="viridis")
+    axes[0, 3].set_title("Attention U-Net Soft Prediction")
+    axes[0, 3].axis("off")
 
     axes[1, 0].imshow(unet_hard, cmap="gray")
     axes[1, 0].set_title("U-Net Binary Prediction")
@@ -128,10 +144,18 @@ def main():
     axes[1, 1].set_title("ResNet-UNet Binary Prediction")
     axes[1, 1].axis("off")
 
-    diff = np.abs(res_hard.astype(np.float32) - unet_hard.astype(np.float32))
-    axes[1, 2].imshow(diff, cmap="hot")
-    axes[1, 2].set_title("Model Disagreement")
+    axes[1, 2].imshow(attn_hard, cmap="gray")
+    axes[1, 2].set_title("Attention U-Net Binary Prediction")
     axes[1, 2].axis("off")
+
+    diff = (
+        np.abs(res_hard.astype(np.float32) - unet_hard.astype(np.float32))
+        + np.abs(attn_hard.astype(np.float32) - unet_hard.astype(np.float32))
+        + np.abs(attn_hard.astype(np.float32) - res_hard.astype(np.float32))
+    )
+    axes[1, 3].imshow(diff, cmap="hot")
+    axes[1, 3].set_title("Combined Disagreement")
+    axes[1, 3].axis("off")
 
     fig.suptitle(f"Random Sample: {image_path.name}", fontsize=14)
     plt.tight_layout()

@@ -5,7 +5,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from pathlib import Path
-import os
 from tqdm import tqdm
 import numpy as np
 
@@ -183,8 +182,6 @@ class SegmentationTrainer:
         
         best_dice = -1.0
         best_epoch = -1
-        patience = 50
-        no_improve_count = 0
         
         for epoch in range(num_epochs):
             print(f"\nEpoch {epoch + 1}/{num_epochs}")
@@ -204,7 +201,6 @@ class SegmentationTrainer:
             if val_dice > best_dice:
                 best_dice = val_dice
                 best_epoch = epoch
-                no_improve_count = 0
                 
                 checkpoint_path = Path(checkpoint_dir) / 'best_model.pth'
                 torch.save({
@@ -215,13 +211,7 @@ class SegmentationTrainer:
                     'val_iou': val_iou,
                 }, checkpoint_path)
                 print(f"Saved best model to {checkpoint_path}")
-            else:
-                no_improve_count += 1
             
-            # Early stopping
-            if no_improve_count >= patience:
-                print(f"\nEarly stopping at epoch {epoch + 1}. Best Dice: {best_dice:.4f}")
-                break
         
         print(f"\nTraining complete! Best Dice: {best_dice:.4f} at epoch {best_epoch + 1}")
         return self.train_history, self.val_history

@@ -11,8 +11,6 @@ from pathlib import Path
 
 from train import train_segmentation_model
 from evaluate import ModelEvaluator
-from inference import SegmentationInference
-
 
 def save_training_metrics_to_csv(train_hist, val_hist, model_name, csv_path):
     """Save training metrics to CSV file."""
@@ -95,6 +93,29 @@ def main():
         'learning_rate': 1e-3,
         'checkpoint_dir': './checkpoints',
         'results_dir': './results',
+        'models_to_train': [
+            {
+                'type': 'unet',
+                'name': 'U-Net',
+                'ckpt': 'unet_best_model.pth',
+                'metrics_csv': 'unet_training_metrics.csv',
+                'plot_png': 'unet_training_history.png',
+            },
+            {
+                'type': 'attention_unet',
+                'name': 'Attention U-Net',
+                'ckpt': 'attention_unet_best_model.pth',
+                'metrics_csv': 'attention_unet_training_metrics.csv',
+                'plot_png': 'attention_unet_training_history.png',
+            },
+            {
+                'type': 'resnet_unet',
+                'name': 'ResNet-UNet',
+                'ckpt': 'resnet_unet_best_model.pth',
+                'metrics_csv': 'resnet_unet_training_metrics.csv',
+                'plot_png': 'resnet_unet_training_history.png',
+            },
+        ],
     }
     
     # Create directories
@@ -108,127 +129,84 @@ def main():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"\nUsing device: {device}")
     
-    # ===== Train U-Net =====
-    print(f"\n{'='*60}")
-    print("Training U-Net Model")
-    print(f"{'='*60}")
-    
-    trainer_unet, train_hist_unet, val_hist_unet = train_segmentation_model(
-        model_type='unet',
-        image_dir=config['image_dir'],
-        mask_dir=config['mask_dir'],
-        batch_size=config['batch_size'],
-        num_epochs=config['num_epochs'],
-        learning_rate=config['learning_rate'],
-        img_size=config['img_size'],
-        checkpoint_dir=config['checkpoint_dir']
-    )
-    
-    # Plot U-Net results
-    plot_path = Path(config['results_dir']) / 'unet_training_history.png'
-    plot_training_history(train_hist_unet, val_hist_unet, save_path=str(plot_path))
-    
-    # Save U-Net metrics to CSV
-    csv_path = Path(config['results_dir']) / 'unet_training_metrics.csv'
-    save_training_metrics_to_csv(train_hist_unet, val_hist_unet, 'U-Net', str(csv_path))
-    
-    best_unet_path = Path(config['checkpoint_dir']) / 'best_model.pth'
-    
-    # ===== Train ResNet-UNet =====
-    print(f"\n{'='*60}")
-    print("Training ResNet-UNet Model")
-    print(f"{'='*60}")
-    
-    # Rename checkpoint for U-Net
-    if best_unet_path.exists():
-        backup_path = Path(config['checkpoint_dir']) / 'unet_best_model.pth'
-        best_unet_path.rename(backup_path)
-    
-    trainer_resnet, train_hist_resnet, val_hist_resnet = train_segmentation_model(
-        model_type='resnet_unet',
-        image_dir=config['image_dir'],
-        mask_dir=config['mask_dir'],
-        batch_size=config['batch_size'],
-        num_epochs=config['num_epochs'],
-        learning_rate=config['learning_rate'],
-        img_size=config['img_size'],
-        checkpoint_dir=config['checkpoint_dir']
-    )
-    
-    # Plot ResNet-UNet results
-    plot_path = Path(config['results_dir']) / 'resnet_unet_training_history.png'
-    plot_training_history(train_hist_resnet, val_hist_resnet, save_path=str(plot_path))
-    
-    # Save ResNet-UNet metrics to CSV
-    csv_path = Path(config['results_dir']) / 'resnet_unet_training_metrics.csv'
-    save_training_metrics_to_csv(train_hist_resnet, val_hist_resnet, 'ResNet-UNet', str(csv_path))
-    
-    best_resnet_path = Path(config['checkpoint_dir']) / 'best_model.pth'
-    if best_resnet_path.exists():
-        backup_path = Path(config['checkpoint_dir']) / 'resnet_unet_best_model.pth'
-        best_resnet_path.rename(backup_path)
+    # ===== Train All Models =====
+    for model_cfg in config['models_to_train']:
+        print(f"\n{'='*60}")
+        print(f"Training {model_cfg['name']} Model")
+        print(f"{'='*60}")
+
+        _, train_hist, val_hist = train_segmentation_model(
+            model_type=model_cfg['type'],
+            image_dir=config['image_dir'],
+            mask_dir=config['mask_dir'],
+            batch_size=config['batch_size'],
+            num_epochs=config['num_epochs'],
+            learning_rate=config['learning_rate'],
+            img_size=config['img_size'],
+            checkpoint_dir=config['checkpoint_dir']
+        )
+
+        # Save training curve for the model.
+        plot_path = Path(config['results_dir']) / model_cfg['plot_png']
+        plot_training_history(train_hist, val_hist, save_path=str(plot_path))
+
+        # Save epoch metrics for the model.
+        csv_path = Path(config['results_dir']) / model_cfg['metrics_csv']
+        save_training_metrics_to_csv(train_hist, val_hist, model_cfg['name'], str(csv_path))
+
+        best_model_path = Path(config['checkpoint_dir']) / 'best_model.pth'
+        if best_model_path.exists():
+            target_path = Path(config['checkpoint_dir']) / model_cfg['ckpt']
+            best_model_path.rename(target_path)
     
     # ===== Evaluate Models =====
     print(f"\n{'='*60}")
     print("Evaluating Models")
     print(f"{'='*60}")
     
-    # Evaluate U-Net
-    print("\nEvaluating U-Net...")
-    evaluator_unet = ModelEvaluator(
-        str(Path(config['checkpoint_dir']) / 'unet_best_model.pth'),
-        model_type='unet',
-        device=device,
-        img_size=config['img_size']
-    )
-    results_unet = evaluator_unet.evaluate_dataset(
-        config['image_dir'],
-        config['mask_dir'],
-        threshold=0.5
-    )
-    evaluator_unet.print_results(results_unet)
-    
-    # Evaluate ResNet-UNet
-    print("\nEvaluating ResNet-UNet...")
-    evaluator_resnet = ModelEvaluator(
-        str(Path(config['checkpoint_dir']) / 'resnet_unet_best_model.pth'),
-        model_type='resnet_unet',
-        device=device,
-        img_size=config['img_size']
-    )
-    results_resnet = evaluator_resnet.evaluate_dataset(
-        config['image_dir'],
-        config['mask_dir'],
-        threshold=0.5
-    )
-    evaluator_resnet.print_results(results_resnet)
+    model_results = {}
+    for model_cfg in config['models_to_train']:
+        print(f"\nEvaluating {model_cfg['name']}...")
+        evaluator = ModelEvaluator(
+            str(Path(config['checkpoint_dir']) / model_cfg['ckpt']),
+            model_type=model_cfg['type'],
+            device=device,
+            img_size=config['img_size']
+        )
+        results = evaluator.evaluate_dataset(
+            config['image_dir'],
+            config['mask_dir'],
+            threshold=0.5
+        )
+        evaluator.print_results(results)
+        model_results[model_cfg['name']] = results
     
     # ===== Model Comparison =====
     print(f"\n{'='*60}")
     print("Model Comparison")
     print(f"{'='*60}")
-    print(f"\nU-Net:")
-    print(f"  Dice: {results_unet['dice_mean']:.4f} ± {results_unet['dice_std']:.4f}")
-    print(f"  IoU:  {results_unet['iou_mean']:.4f} ± {results_unet['iou_std']:.4f}")
-    print(f"\nResNet-UNet:")
-    print(f"  Dice: {results_resnet['dice_mean']:.4f} ± {results_resnet['dice_std']:.4f}")
-    print(f"  IoU:  {results_resnet['iou_mean']:.4f} ± {results_resnet['iou_std']:.4f}")
+    for model_cfg in config['models_to_train']:
+        name = model_cfg['name']
+        print(f"\n{name}:")
+        print(f"  Dice: {model_results[name]['dice_mean']:.4f} ± {model_results[name]['dice_std']:.4f}")
+        print(f"  IoU:  {model_results[name]['iou_mean']:.4f} ± {model_results[name]['iou_std']:.4f}")
     
     # Plot comparison
     fig, axes = plt.subplots(1, 2, figsize=(12, 4))
     
-    models = ['U-Net', 'ResNet-UNet']
-    dice_means = [results_unet['dice_mean'], results_resnet['dice_mean']]
-    dice_stds = [results_unet['dice_std'], results_resnet['dice_std']]
-    iou_means = [results_unet['iou_mean'], results_resnet['iou_mean']]
-    iou_stds = [results_unet['iou_std'], results_resnet['iou_std']]
-    
-    axes[0].bar(models, dice_means, yerr=dice_stds, capsize=5, alpha=0.7, color=['blue', 'green'])
+    models = [m['name'] for m in config['models_to_train']]
+    dice_means = [model_results[name]['dice_mean'] for name in models]
+    dice_stds = [model_results[name]['dice_std'] for name in models]
+    iou_means = [model_results[name]['iou_mean'] for name in models]
+    iou_stds = [model_results[name]['iou_std'] for name in models]
+
+    colors = ['tab:blue', 'tab:orange', 'tab:green']
+    axes[0].bar(models, dice_means, yerr=dice_stds, capsize=5, alpha=0.7, color=colors[:len(models)])
     axes[0].set_ylabel('Dice Coefficient')
     axes[0].set_title('Model Comparison - Dice')
     axes[0].set_ylim([0, 1])
     
-    axes[1].bar(models, iou_means, yerr=iou_stds, capsize=5, alpha=0.7, color=['blue', 'green'])
+    axes[1].bar(models, iou_means, yerr=iou_stds, capsize=5, alpha=0.7, color=colors[:len(models)])
     axes[1].set_ylabel('IoU Score')
     axes[1].set_title('Model Comparison - IoU')
     axes[1].set_ylim([0, 1])
