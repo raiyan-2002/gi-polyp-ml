@@ -6,4 +6,3 @@ checkpoints/
 **DS_Store**
 __pycache__/
 .vscode/
-tests/

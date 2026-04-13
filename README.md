@@ -112,5 +112,5 @@ python random_image_sample.py --image-dir ./path/to/test/images --mask-dir ./pat
 
 An example output visualization from `random_image_sample.py` looks like this:
 
-<img src="./tests/test1.png" alt="Sample Prediction Visualization" width="650" />
+<img src="./tests/test.png" alt="Sample Prediction Visualization" width="650" />
 
