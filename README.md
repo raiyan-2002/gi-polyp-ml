@@ -2,7 +2,7 @@
 
 This repository includes a complete implementation of medical image segmentation for gastrointestinal polyps using deep learning. This project includes U-Net, Attention U-Net, and ResNet-UNet models trained on the Kvasir-SEG dataset.
 
-**Dataset:** Kvasir-SEG dataset containing 1000 colonoscopy images with corresponding ground-truth segmentation masks. The dataset comes from [here](https://datasets.simula.no/kvasir-seg/)
+**Dataset:** Kvasir-SEG dataset containing 1000 colonoscopy images with corresponding ground-truth segmentation masks. The dataset comes from [here](https://datasets.simula.no/kvasir-seg/) (kvasir-seg.zip, at the bottom of the page).
 
 ## Setting Up the Environment
 
