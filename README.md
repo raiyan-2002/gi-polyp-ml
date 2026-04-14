@@ -56,7 +56,7 @@ gi-polyp-ml/
 
 ## Usage 
 
-After setting up the environment and downloading the dataset, you can train the models, evaluate them, and visualize predictions using the provided scripts. The project supports both command-line interface and Python API for flexibility.
+After setting up the environment and downloading the dataset, you can train the models, evaluate them, and visualize predictions using the provided scripts.
 
 ### Training Script
 
