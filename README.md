@@ -21,13 +21,13 @@ python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
 ```
-Then, download the `data`, `data_separated`, and `checkpoints` folders from this Google Drive [link](https://drive.google.com/drive/folders/1Bwbz3EF7SkfZXx2IWcrFn4K9Q35p75H4) and place them in the root of the project directory. 
+Then, download the `data/`, `data_separated/`, and `checkpoints/` folders from this Google Drive [link](https://drive.google.com/drive/folders/1Bwbz3EF7SkfZXx2IWcrFn4K9Q35p75H4) and place them in the root of the project directory. 
 
-`data` includes 2 subfolders - `images` and `masks` - with 950 colonoscopy images and their corresponding segmentation masks. These images are used for training and validation.
+`data/` includes 2 subfolders - `images/` and `masks/` - with 950 colonoscopy images and their corresponding segmentation masks. These images are used for training and validation.
 
-`data_separated` includes 2 subfolders - `images` and `masks` - with 50 testing images and masks. These images are used for testing and evaluation of the trained models. These images were held out from the training process to provide an unbiased evaluation of model performance.
+`data_separated/` includes 2 subfolders - `images/` and `masks/` - with 50 testing images and masks. These images are used for testing and evaluation of the trained models. These images were held out from the training process to provide an unbiased evaluation of model performance.
 
-`checkpoints` includes the saved model weights for the best U-Net, Attention U-Net, and ResNet-UNet models after training. If you want to train the models yourself, you can skip downloading the `checkpoints` folder, and it will be generated after running the training script.
+`checkpoints/` includes the saved model weights for the best U-Net, Attention U-Net, and ResNet-UNet models after training. If you want to train the models yourself, you can skip downloading the `checkpoints/` folder, and it will be generated after running the training script.
 
 ## Project Structure
 
@@ -66,7 +66,7 @@ To run the entire training pipeline for all models, use:
 python experiment.py
 ```
 
-This will train the U-Net, Attention U-Net, and ResNet-UNet models sequentially with the images in `data/`, saving the best model to `./checkpoints/`. It will also generate training curves, CSV files, and comparison plots in the `./results/` folder. If you do not want to retrain the models, you can skip this step, and simply download the model weights in the `checkpoints/` folder from the Google Drive link earlier in the README.
+This will train the U-Net, Attention U-Net, and ResNet-UNet models sequentially with the images in `data/`, saving the best model to `checkpoints/`. It will also generate training curves, CSV files, and comparison plots in a new `results/` folder. If you do not want to retrain the models, you can skip this step, and simply download the model weights in the `checkpoints/` folder from the Google Drive link earlier in the README.
 
 On an Apple Silicon M4 Pro with 24GB RAM, this script took approximately 6 hours to run.
 
@@ -88,7 +88,7 @@ To evaluate the trained models on the held-out test set in `data_separated/`, us
 python evaluate_all_models.py
 ```
 
-This will compute Dice and IoU scores for each model on the 50 test images and save a CSV file to `./results/` with metrics such as average Dice and IoU over the test set, for each model. 
+This will compute Dice and IoU scores for each model on the 50 test images and save a CSV file to a new `results/` folder with metrics such as average Dice and IoU over the test set, for each model. 
 
 To evaluate on a different dataset, you can optionally specify the image and mask directories:
 ```bash
