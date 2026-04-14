@@ -2,7 +2,8 @@
 data/
 data_separated/
 checkpoints/
-
+results/
+tests/
 **DS_Store**
 __pycache__/
 .vscode/
